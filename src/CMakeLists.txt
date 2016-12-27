@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 2.6)
 # This is the build file for ORCHID (Oak Ridge baCkground at HfIr Daq)
-project (ORCHID)
+project (EffTester)
 
 # The version number.
 set(ORCHID_VERSION_MAJOR 0)
@@ -73,11 +73,11 @@ file(GLOB_RECURSE HDRS *.h)
 include_directories(".")
 
 # Set the executable and what it depends on
-add_executable(orchid ${SRCS} ${HDRS})
+add_executable(efftest ${SRCS} ${HDRS})
 
 # make sure that the system knows to link the boost libraries
-target_link_libraries( orchid ${Boost_LIBRARIES})
-target_link_libraries( orchid ${CURSES_LIBRARIES})
-target_link_libraries( orchid ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries( efftest ${Boost_LIBRARIES})
+target_link_libraries( efftest ${CURSES_LIBRARIES})
+target_link_libraries( efftest ${CMAKE_THREAD_LIBS_INIT})
 # now also set linking to the CAEN digitizer library
-target_link_libraries( orchid CAENComm)
+target_link_libraries( efftest CAENComm)
