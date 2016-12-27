@@ -108,6 +108,10 @@ private:
     unsigned int* rdbkArray;
     CAENComm_ErrorCode* cycleErrsArray;
     int arraySize;
+    
+    unsigned long long interuptWaitAttempts = 0;
+    unsigned long long interuptTimeouts = 0;
+    
     //variables to hold sizes of parts of the readout (in 32 bit ints
     int sizePerEvent[8];
     int sizePerChanPairAggregate[8];
