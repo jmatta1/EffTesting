@@ -742,7 +742,7 @@ void UIThread::runRateTests()
         unsigned totalRate = rateCountArray[i][0]     + rateCountArray[i][1] * 10   +
                              rateCountArray[i][2]*100 + rateCountArray[i][3] * 1000;
         totalRate*=1000;
-        BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Starting test: " << i << "With Rate: " << totalRate;
+        BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Starting test: " << i << "  With Rate: " << totalRate << "Hz";
         //set the run number
         this->tempRunNumber = i;
         //configure the pulser settings for this run
@@ -757,14 +757,14 @@ void UIThread::runRateTests()
         //run the test
         this->startTestDataTaking();
         //draw the testing screen
-        while(this->currTime < this->stopTime)
+        while(milliSeconds < 600000)
         {
             this->drawTestingScreen();
             boost::this_thread::sleep_for(this->refreshPeriod);
         }
         //now shut this run down
         this->stopDataTaking();
-        BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Ending test: " << i << "With Rate: " << totalRate;
+        BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Ending test: " << i << "  With Rate: " << totalRate << "Hz";
         //now pause a few seconds
         boost::this_thread::sleep_for(boost::chrono::seconds(2));
     }
@@ -805,8 +805,6 @@ void UIThread::startTestDataTaking()
     }
     //TODO: Add code for sending acquisition start signal from USB device for the S-In front panel LEMO
     this->startTime = boost::posix_time::microsec_clock::universal_time();
-    this->stopTime = (this->startTime + boost::posix_time::minutes(10));
-    BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Start time is: " << this->startTime << " Stop Time is: " << this->stopTime;
     mode = UIMode::Testing;
     //this->startLine = 0;
     wclear(this->textWindow);

@@ -195,7 +195,6 @@ private:
     float smthFileSize;
     long long updateLoops;
     boost::posix_time::ptime startTime;
-    boost::posix_time::ptime stopTime;
     boost::posix_time::ptime currTime;
     boost::posix_time::time_duration runTime;
     long long int milliSeconds;
