@@ -44,14 +44,40 @@ static const int tempStartCol = 76;
 static const int volStartCol = 35;
 static const float expAvgSmthFactor = 0.5;
 
+//this is the array of settings for internal pulser rates. There are 72 different
+//combinations, each is at least 6.8% smaller in rate than the next one, all the
+//rates here are 1MHz or less, the format is: {#channels at 1kHz, #channels at 10kHz,
+//#channels at 100kHz, and #channels at 1MHz}
+static const unsigned int rateCountArray[72][4] =
+{{ 1,  0, 0, 0}, { 2,  0, 0, 0}, { 3,  0, 0, 0}, { 4,  0,  0, 0},
+ { 5,  0, 0, 0}, { 6,  0, 0, 0}, { 7,  0, 0, 0}, { 8,  0,  0, 0},
+ { 9,  0, 0, 0}, {10,  0, 0, 0}, {11,  0, 0, 0}, {12,  0,  0, 0},
+ {13,  0, 0, 0}, {14,  0, 0, 0}, {15,  0, 0, 0}, { 7,  1,  0, 0},
+ { 9,  1, 0, 0}, {11,  1, 0, 0}, {13,  1, 0, 0}, {15,  1,  0, 0},
+ { 7,  2, 0, 0}, { 9,  2, 0, 0}, {11,  2, 0, 0}, {14,  2,  0, 0},
+ { 7,  3, 0, 0}, {10,  3, 0, 0}, {13,  3, 0, 0}, { 6,  4,  0, 0},
+ {10,  4, 0, 0}, { 4,  5, 0, 0}, { 8,  5, 0, 0}, { 2,  6,  0, 0},
+ { 7,  6, 0, 0}, { 2,  7, 0, 0}, { 7,  7, 0, 0}, { 3,  8,  0, 0},
+ { 0,  9, 0, 0}, { 7,  9, 0, 0}, { 4, 10, 0, 0}, { 2, 11,  0, 0},
+ { 0, 12, 0, 0}, { 9,  2, 1, 0}, { 8,  3, 1, 0}, { 8,  4,  1, 0},
+ { 9,  5, 1, 0}, { 0,  7, 1, 0}, { 2,  8, 1, 0}, { 5,  9,  1, 0},
+ { 9,  0, 2, 0}, { 4,  2, 2, 0}, { 0, 14, 1, 0}, { 7,  5,  2, 0},
+ { 5,  7, 2, 0}, { 4,  9, 2, 0}, { 4,  1, 3, 0}, { 6,  3,  3, 0},
+ { 0,  6, 3, 0}, { 5,  8, 3, 0}, { 2, 11, 3, 0}, { 0,  4,  4, 0},
+ { 0,  7, 4, 0}, { 2, 10, 4, 0}, { 7,  3, 5, 0}, { 4,  7,  5, 0},
+ { 3,  1, 6, 0}, { 5,  5, 6, 0}, { 0, 10, 6, 0}, { 0,  5,  7, 0},
+ { 1,  0, 8, 0}, { 0,  6, 8, 0}, { 0,  2, 9, 0}, { 0,  0, 10, 0}};
+
 UIThread::UIThread(InterThread::SlowData* slDat, InterThread::AcquisitionData* rtDat,
                    InterThread::FileData* fiDat, Utility::MpodMapper* mpodMap,
                    InterThread::AcquisitionThreadControl* acqCtrl,
                    InterThread::SlowControlsThreadController* sctCtrl,
-                   InterThread::FileOutputThreadController* fileCtrl, InterThread::ProcessingThreadControl* procCtrl,
+                   InterThread::FileOutputThreadController* fileCtrl,
+                   InterThread::ProcessingThreadControl* procCtrl,
                    Utility::ToProcessingQueuePair* procDataQueue,
                    Utility::ToFileMultiQueue* fileDataQueue,
-                   SlowControls::MpodController* mpCtrl, int refreshFrequency,
+                   SlowControls::MpodController* mpCtrl,
+                   Digitizer::Vx1730Digitizer* digitizer, int refreshFrequency,
                    int pollingRate, int numAcqThr, int numPrThr, bool runPowerUp,
                    bool runPowerDown):
     slowData(slDat), acqData(rtDat), fileData(fiDat), mpodMapper(mpodMap), procQueuePair(procDataQueue),
@@ -60,7 +86,7 @@ UIThread::UIThread(InterThread::SlowData* slDat, InterThread::AcquisitionData* r
     persistCount(-1), command(""),  persistentMessage(""), runLoop(true),
     refreshRate(refreshFrequency), mode(UIMode::Init), textWindow(nullptr),
     messageWindow(nullptr), lg(OrchidLog::get()), powerUp(runPowerUp), powerDown(runPowerDown),
-    smthFileSize(0.0), smthDigiSize(nullptr), updateLoops(0), smthTrigRate(nullptr)
+    smthFileSize(0.0), smthDigiSize(nullptr), updateLoops(0), smthTrigRate(nullptr), digi(digitizer)
 {
     //calculate the refresh period in seconds then multiply by one billion to get
     //nanoseconds, which is what boost thread takes
@@ -163,6 +189,9 @@ void UIThread::drawScreen()
     case UIMode::Running:
         this->drawRunningScreen();
         break;
+    case UIMode::Testing:
+        this->drawTestingScreen();
+        break;
     }
     refresh();
     wrefresh(this->textWindow);
@@ -190,16 +219,18 @@ void UIThread::drawIdleScreen()
     mvwprintw(this->textWindow, 1, 0,  "Commands Available");
     mvwprintw(this->textWindow, 2, 4,  "start");
     mvwprintw(this->textWindow, 2, 16, "- Start taking data");
-    mvwprintw(this->textWindow, 3, 4,  "changerun");
-    mvwprintw(this->textWindow, 3, 16, "- Change Run Title and Number");
-    mvwprintw(this->textWindow, 4, 4,  "runnumber");
-    mvwprintw(this->textWindow, 4, 16, "- Change Run Number");
-    mvwprintw(this->textWindow, 5, 4,  "next");
-    mvwprintw(this->textWindow, 5, 16, "- Increment Run Number");
-    mvwprintw(this->textWindow, 6, 4,  "turnoff");
-    mvwprintw(this->textWindow, 6, 16, "- Shutdown MPOD and Demobilize Acquisition");
-    mvwprintw(this->textWindow, 7, 4,  "quit/exit");
-    mvwprintw(this->textWindow, 7, 16, "- Exit ORCHID");
+    mvwprintw(this->textWindow, 3, 4,  "dotests");
+    mvwprintw(this->textWindow, 3, 16, "- RunAcq Tests");
+    mvwprintw(this->textWindow, 4, 4,  "changerun");
+    mvwprintw(this->textWindow, 4, 16, "- Change Run Title and Number");
+    mvwprintw(this->textWindow, 5, 4,  "runnumber");
+    mvwprintw(this->textWindow, 5, 16, "- Change Run Number");
+    mvwprintw(this->textWindow, 6, 4,  "next");
+    mvwprintw(this->textWindow, 6, 16, "- Increment Run Number");
+    mvwprintw(this->textWindow, 7, 4,  "turnoff");
+    mvwprintw(this->textWindow, 7, 16, "- Shutdown MPOD and Demobilize Acquisition");
+    mvwprintw(this->textWindow, 8, 4,  "quit/exit");
+    mvwprintw(this->textWindow, 8, 16, "- Exit ORCHID");
     
     this->drawPersistentMessage();
     this->drawCommandInProgress();
@@ -545,6 +576,7 @@ void UIThread::handleCommand()
             okFlag = IDLE_MODE_VALID_CMD.find(cmd)->second;
             break;
         case UIMode::Running:
+        case UIMode::Testing:
             okFlag = RUN_MODE_VALID_CMD.find(cmd)->second;
             break;
         }
@@ -613,6 +645,12 @@ void UIThread::handleCommand()
             break;
         }
         break;
+    case UICommands::RunTests:
+        this->persistCount = -1; //clear any error, clearly they fixed it
+        wmove(this->messageWindow, 1, 0);
+        persistentMessage.clear();
+        wclrtoeol(this->messageWindow);
+        this->runRateTests();
     case UICommands::Next:
         this->persistCount = -1; //clear any error, clearly they fixed it
         wmove(this->messageWindow, 1, 0);
@@ -680,6 +718,154 @@ void UIThread::handleCommand()
         break;
     }
 }
+
+void UIThread::runRateTests()
+{
+    //set up a lambda to change runs and stuff every time we need to
+    auto setRunsLambda = 
+    [this](const std::string& runTil, const int runNum)
+    {
+        while(!this->fileControl->setNewRunParameters(runTil, runNum))
+        {
+            boost::this_thread::sleep_for(this->refreshPeriod);
+        }
+    };
+    //this is the run name for everything to come
+    this->tempRunTitle = "NewDigitizerTests";
+    
+    //iterate through the set of digitizer settings
+    for(int i=0; i<2; ++i)
+    {
+        unsigned totalRate = rateCountArray[i][0]     + rateCountArray[i][1] * 10   +
+                             rateCountArray[i][2]*100 + rateCountArray[i][3] * 1000;
+        totalRate*=1000;
+        BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Starting test: " << i << "With Rate: " << totalRate;
+        //set the run number
+        this->tempRunNumber = i;
+        //configure the pulser settings for this run
+        pulseSettings.setOverallRate(rateCountArray[i][0],
+                                     rateCountArray[i][1],
+                                     rateCountArray[i][2],
+                                     rateCountArray[i][3]);
+        //setup the digitizer pulser
+        this->digi->setupPulsing(pulseSettings);
+        //setup the run
+        setRunsLambda(this->tempRunTitle, this->tempRunNumber);
+        //run the test
+        this->startTestDataTaking();
+        //draw the testing screen
+        while(this->currTime < this->stopTime)
+        {
+            this->drawTestingScreen();
+            boost::this_thread::sleep_for(this->refreshPeriod);
+        }
+        //now shut this run down
+        this->stopDataTaking();
+        BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Ending test: " << i << "With Rate: " << totalRate;
+        //now pause a few seconds
+        boost::this_thread::sleep_for(boost::chrono::seconds(2));
+    }
+}
+
+void UIThread::startTestDataTaking()
+{
+    updateLoops = 1;
+    smthFileSize = 0.0;
+    for(int i=0; i<numAcqThreads; ++i)
+    {
+        smthDigiSize[i] = 0.0;
+    }
+    for(int i=0; i<acqData->numChannels; ++i)
+    {
+        smthTrigRate[i] = 0.0;
+    }
+    this->acqData->clearData();
+    this->acqData->clearTrigs();
+    BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Starting File Writing";
+    this->fileControl->setToWriting();
+    //wait to be certain the file thread is up and running before we start anything else
+    boost::this_thread::sleep_for(this->refreshPeriod);
+    //remove slow controls stuff, we aren't using it, just leave it polling
+    BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Starting Event Processing";
+    this->procControl->setToRunning();
+    //wait to be certain the processing threads are up and running before we start anything else
+    boost::this_thread::sleep_for(this->refreshPeriod);
+    BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Online Processing Thread Set To Start";
+    BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Starting Acquisition Thread";
+    this->acqControl->setToAcquiring();
+    wclear(this->textWindow);
+    mvwprintw(this->textWindow, 0, 0, "Waiting For Acquisition Starts");
+    wrefresh(this->textWindow);
+    while(this->acqControl->getThreadsWaiting() > 0)
+    {//until we see the acquisition threads are done waiting on their wait condition, sleep and spin
+        boost::this_thread::sleep_for(this->refreshPeriod);
+    }
+    //TODO: Add code for sending acquisition start signal from USB device for the S-In front panel LEMO
+    this->startTime = boost::posix_time::microsec_clock::universal_time();
+    this->stopTime = (this->startTime + boost::posix_time::minutes(10));
+    mode = UIMode::Testing;
+    //this->startLine = 0;
+    wclear(this->textWindow);
+}
+
+void UIThread::drawTestingScreen()
+{
+    //draw the file information line
+    this->drawFileInfo();
+    currTime = boost::posix_time::microsec_clock::universal_time();
+    runTime = (this->currTime - startTime);
+    milliSeconds = runTime.total_microseconds()/1000;
+    //draw the run time line
+    this->drawRuntimeInformation();
+    //Draw the acquisition info line
+    this->drawAcquisitionGlobalInformation();
+    //draw the slow controls global info line
+    this->drawPulserInfo();
+    //draw the slow controls info grid();
+    this->drawTriggersGrid();
+    //draw the message stuff
+    this->drawPersistentMessage();
+    this->drawCommandInProgress();
+    ++updateLoops;
+}
+
+void UIThread::drawPulserInfo()
+{
+    std::ostringstream builder;
+    builder << "Internal Pulser: ";
+    for(int i=0; i<16; ++i)
+    {
+        if(!pulseSettings.active[i])
+        {
+            builder<<"ch "<<i<<": off | ";
+        }
+        else
+        {
+            if(pulseSettings.rates[i]==0)
+            {
+                builder<<"ch "<<i<<": 1kHz | ";
+            }
+            else if(pulseSettings.rates[i]==1)
+            {
+                builder<<"ch "<<i<<": 10kHz | ";
+            }
+            else if(pulseSettings.rates[i]==2)
+            {
+                builder<<"ch "<<i<<": 100kHz | ";
+            }
+            else if(pulseSettings.rates[i]==3)
+            {
+                builder<<"ch "<<i<<": 1MHz | ";
+            }
+            else
+            {
+                builder<<"ch "<<i<<": WTF | ";
+            }
+        }
+    }
+    mvwprintw(this->textWindow, 3, 0, builder.str().c_str());
+}
+
 
 void UIThread::handleScreenResize()
 {

@@ -33,7 +33,7 @@ namespace Threads
 //The various enumerated commands
 enum class UICommands : char {TurnOn,       TurnOff,    Start,      Stop,
                               ChangeRun,    ChangeNum,  Next,       Quit,
-                              Invalid,      Unavailable};
+                              Invalid,      RunTests,   Unavailable};
 
 //A lookup between string and the command
 static const std::map<std::string, UICommands> UI_COMMAND_DISPATCH =
@@ -41,6 +41,7 @@ static const std::map<std::string, UICommands> UI_COMMAND_DISPATCH =
         ("quit",      UICommands::Quit)
         ("nope",      UICommands::Quit)
         ("turnon",    UICommands::TurnOn)
+        ("dotests",   UICommands::RunTests)
         ("turnoff",   UICommands::TurnOff)
         ("start",     UICommands::Start)
         ("stop",      UICommands::Stop)
@@ -52,6 +53,7 @@ static const std::map<std::string, UICommands> UI_COMMAND_DISPATCH =
 static const std::map<UICommands, bool> INIT_MODE_VALID_CMD =
     map_list_of(UICommands::Quit, true)
         (UICommands::TurnOn,    true)
+        (UICommands::RunTests,  false)
         (UICommands::TurnOff,   false)
         (UICommands::Start,     false)
         (UICommands::Stop,      false)
@@ -63,6 +65,7 @@ static const std::map<UICommands, bool> INIT_MODE_VALID_CMD =
 static const std::map<UICommands, bool> IDLE_MODE_VALID_CMD =
     map_list_of(UICommands::Quit, true)
         (UICommands::TurnOn,    false)
+        (UICommands::RunTests,  true)
         (UICommands::TurnOff,   true)
         (UICommands::Start,     true)
         (UICommands::Stop,      false)
@@ -76,6 +79,7 @@ static const std::map<UICommands, bool> RUN_MODE_VALID_CMD =
         (UICommands::TurnOn,    false)
         (UICommands::TurnOff,   false)
         (UICommands::Start,     false)
+        (UICommands::RunTests,  false)
         (UICommands::Stop,      true)
         (UICommands::ChangeRun, false)
         (UICommands::ChangeNum, false)
