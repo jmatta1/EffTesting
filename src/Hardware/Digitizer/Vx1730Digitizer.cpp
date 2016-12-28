@@ -124,8 +124,8 @@ void Vx1730Digitizer::setupPulsing(PulserSetting& pulseSetting)
     int stopInd = this->channelStartInd + this->numChannel;
     for(int i=0; i<16; ++i)
     {
-        addrArray[i] = (Vx1730IndivWriteRegistersAddr<Vx1730ReadRegisters::DppAlgorithmCtrl>::value +
-                        (i * Vx1730IndivWriteRegistersOffs<Vx1730ReadRegisters::DppAlgorithmCtrl>::value));
+        addrArray[i] = (Vx1730IndivReadRegistersAddr<Vx1730ReadRegisters::DppAlgorithmCtrl>::value +
+                        (i * Vx1730IndivReadRegistersOffs<Vx1730ReadRegisters::DppAlgorithmCtrl>::value));
         rdbkArray[i] = 0x00000000;
         cycleErrsArray[i] = CAENComm_Success;
     }
@@ -155,7 +155,7 @@ void Vx1730Digitizer::setupPulsing(PulserSetting& pulseSetting)
         unsigned int tempValue = rdbkArray[i];
         if(pulseSetting.active[i])
         {
-            pulseMask = 0x100;
+            unsigned int pulseMask = 0x100;
             pulseMask |= (pulseSetting.rates[i] < 9);
             //now make sure the bits are clear by anding the temporary value with
             //a value that is 1 everywhere but bits 8, 9, and 10 (indexing from 0)
@@ -172,9 +172,8 @@ void Vx1730Digitizer::setupPulsing(PulserSetting& pulseSetting)
         }
     }
     //now call the write
-    CAENComm_ErrorCode overallErr = CAENComm_MultiWrite32(this->digitizerHandle,
-                                                          addrArray, 16,
-                                                          dataArray, cycleErrsArray);
+    overallErr = CAENComm_MultiWrite32(this->digitizerHandle, addrArray, 16,
+                                       dataArray, cycleErrsArray);
     //test for errors in the individual cycles
     for(int i=0; i<16; ++i)
     {
