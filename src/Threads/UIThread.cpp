@@ -806,6 +806,7 @@ void UIThread::startTestDataTaking()
     //TODO: Add code for sending acquisition start signal from USB device for the S-In front panel LEMO
     this->startTime = boost::posix_time::microsec_clock::universal_time();
     this->stopTime = (this->startTime + boost::posix_time::minutes(10));
+    BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Start time is: " << this->startTime << " Stop Time is: " << this->stopTime;
     mode = UIMode::Testing;
     //this->startLine = 0;
     wclear(this->textWindow);
