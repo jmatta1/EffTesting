@@ -111,7 +111,7 @@ void UIThread::operator() ()
     //holds characters that were input during the loop
     int inChar;
     //start the event loop
-    while(runLoop)
+    /*while(runLoop)
     {
         //here we draw the screen
         drawScreen();
@@ -122,7 +122,10 @@ void UIThread::operator() ()
         }
         //here we sleep a bit
         boost::this_thread::sleep_for(this->refreshPeriod);
-    }
+    }*/
+    this->turnOn();
+    this->runRateTests();
+    this->runGracefulShutdown();
     BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Preparing for shutdown";
     this->waitForAllTerminations();
     delwin(this->textWindow);
