@@ -737,7 +737,7 @@ void UIThread::runRateTests()
     this->tempRunTitle = "NewDigitizerTests";
     
     //iterate through the set of digitizer settings
-    for(int i=71; i<72; ++i)
+    for(int i=0; i<72; ++i)
     {
         unsigned totalRate = rateCountArray[i][0]     + rateCountArray[i][1] * 10   +
                              rateCountArray[i][2]*100 + rateCountArray[i][3] * 1000;
