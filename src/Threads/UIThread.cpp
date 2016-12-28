@@ -756,6 +756,7 @@ void UIThread::runRateTests()
         setRunsLambda(this->tempRunTitle, this->tempRunNumber);
         //run the test
         this->startTestDataTaking();
+        milliSeconds=0;
         //draw the testing screen
         while(milliSeconds < 600000)
         {
