@@ -76,7 +76,7 @@ public:
     }
     
     int getThreadsStopped(){return stopAckCount.load();}
-    int getThreadsStarted(){return stopAckCount.load();}
+    int getThreadsStarted(){return startAckCount.load();}
     int getThreadsTerminated(){return termAckCount.load();}
     
 private:
