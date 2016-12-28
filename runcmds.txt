@@ -1,6 +1,3 @@
 
-turnon
-dotests
-quit
 
 
