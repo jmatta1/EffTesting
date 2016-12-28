@@ -45,6 +45,7 @@ void AcquisitionThread::operator ()()
             break;
         case InterThread::AcquisitionThreadState::Acquiring:
             BOOST_LOG_SEV(lg, Information) << "ACQ Thread: Starting Acquisition";
+            this->controller->acknowledgeStart();
             this->doAcquisitionLoop();
             break;
         }
