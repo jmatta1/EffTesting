@@ -731,7 +731,7 @@ void UIThread::runRateTests()
         }
     };
     //this is the run name for everything to come
-    this->tempRunTitle = "oldDigitizerTests";
+    this->tempRunTitle = "OldDigitizerTests";
     
     //iterate through the set of digitizer settings
     for(int i=0; i<2; ++i)
