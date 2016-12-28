@@ -214,7 +214,7 @@ void Vx1730Digitizer::setupPulsing(PulserSetting& pulseSetting)
         if(pulseSetting.active[i])
         {
             unsigned int pulseMask = 0x100;
-            pulseMask |= (pulseSetting.rates[i] < 9);
+            pulseMask |= (pulseSetting.rates[i] << 9);
             //now make sure the bits are clear by anding the temporary value with
             //a value that is 1 everywhere but bits 8, 9, and 10 (indexing from 0)
             tempValue &= (~0x700);
