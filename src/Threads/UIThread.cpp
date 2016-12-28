@@ -761,6 +761,9 @@ void UIThread::runRateTests()
         while(milliSeconds < 600000)
         {
             this->drawTestingScreen();
+            refresh();
+            wrefresh(this->textWindow);
+            wrefresh(this->messageWindow);
             boost::this_thread::sleep_for(this->refreshPeriod);
         }
         //now shut this run down
@@ -800,7 +803,7 @@ void UIThread::startTestDataTaking()
     wclear(this->textWindow);
     mvwprintw(this->textWindow, 0, 0, "Waiting For Acquisition Starts");
     wrefresh(this->textWindow);
-    while(!(this->acqControl->getThreadsStarted() == 0))
+    while(this->acqControl->getThreadsStarted() == 0)
     {//until we see the acquisition threads are started sleep and spin
         boost::this_thread::sleep_for(this->refreshPeriod);
     }
@@ -840,29 +843,29 @@ void UIThread::drawPulserInfo()
     {
         if(!pulseSettings.active[i])
         {
-            builder<<"ch "<<i<<": off | ";
+            builder<<"off | ";
         }
         else
         {
             if(pulseSettings.rates[i]==0)
             {
-                builder<<"ch "<<i<<": 1kHz | ";
+                builder<<"1kHz | ";
             }
             else if(pulseSettings.rates[i]==1)
             {
-                builder<<"ch "<<i<<": 10kHz | ";
+                builder<<"10kHz | ";
             }
             else if(pulseSettings.rates[i]==2)
             {
-                builder<<"ch "<<i<<": 100kHz | ";
+                builder<<"100kHz | ";
             }
             else if(pulseSettings.rates[i]==3)
             {
-                builder<<"ch "<<i<<": 1MHz | ";
+                builder<<"1MHz | ";
             }
             else
             {
-                builder<<"ch "<<i<<": WTF | ";
+                builder<<"WTF | ";
             }
         }
     }
