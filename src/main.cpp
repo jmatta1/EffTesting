@@ -254,7 +254,7 @@ int main(int argc, char* argv[])
             new Threads::UIThread(slowData, acqData, fileData, mpodMapper,
                                   acqController, sctController, fotController,
                                   prController, toProcessingQueue, toFileQueues,
-                                  mpodController, params.generalBlock->updateFrequency,
+                                  mpodController, digitizerList[0], params.generalBlock->updateFrequency,
                                   params.powerBlock->pollingRate, numDigitizers,
                                   numProcThreads, params.powerBlock->performPowerOn,
                                   params.powerBlock->performPowerOff);

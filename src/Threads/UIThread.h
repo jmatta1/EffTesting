@@ -30,6 +30,7 @@
 // includes from ORCHID
 #include"Utility/MpodMapper.h"
 #include"Hardware/HVLib/MpodController.h"
+#include"Hardware/Digitizer/Vx1730Digitizer.h"
 #include"InterThreadComm/Data/SlowData.h"
 #include"InterThreadComm/Data/AcquisitionData.h"
 #include"InterThreadComm/Data/FileData.h"
@@ -43,7 +44,7 @@
 namespace Threads
 {
 //An enumeration for the modes the display might be in
-enum class UIMode : char {Init, Idle, Running};
+enum class UIMode : char {Init, Idle, Running, Testing};
 //TODO: add calibrate command for UI
 class UIThread
 {
@@ -57,6 +58,7 @@ public:
              Utility::ToProcessingQueuePair* procDataQueue,
              Utility::ToFileMultiQueue* fileDataQueue,
              SlowControls::MpodController* mpCtrl,
+             Digitizer::Vx1730Digitizer* digitizer,
              int refreshFrequency, int pollingRate, int numAcqThr, int numPrThr,
              bool runPowerUp, bool runPowerDown);
     ~UIThread(){delete[] smthDigiSize; delete[] smthTrigRate;}
@@ -111,6 +113,14 @@ private:
     //This loop handles waiting for the user to fix their mistake in making the
     //window too small
     void waitForResize();
+    //this handles automating the rate tests
+    void runRateTests();
+    //this handles starting the DAQ for automated tests
+    void startTestDataTaking();
+    //handles drawing the testing screens
+    void drawTestingScreen();
+    //draws the line of data about pulser settings
+    void drawPulserInfo();
     
     //** Wait For Other Threads Functions **/
     void waitForAllTerminations();
@@ -152,6 +162,7 @@ private:
     InterThread::FileOutputThreadController* fileControl;
     InterThread::ProcessingThreadControl* procControl;
     SlowControls::MpodController* mpodController;
+    Digitizer::Vx1730Digitizer* digi;
     Utility::MpodMapper* mpodMapper;
     Utility::ToProcessingQueuePair* procQueuePair;
     Utility::ToFileMultiQueue* fileMultiQueue;
@@ -161,6 +172,8 @@ private:
     int numAcqThreads;
     //number of processing threads running to wait for
     int numProcThreads;
+    
+    Digitizer::PulserSetting pulseSettings;
     
     /**  Variables for managing the display output**/
     //the actual refresh rate in Hz good for calculations of persist count
@@ -182,6 +195,7 @@ private:
     float smthFileSize;
     long long updateLoops;
     boost::posix_time::ptime startTime;
+    boost::posix_time::ptime stopTime;
     boost::posix_time::ptime currTime;
     boost::posix_time::time_duration runTime;
     long long int milliSeconds;
