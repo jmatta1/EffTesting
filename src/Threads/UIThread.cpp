@@ -840,29 +840,29 @@ void UIThread::drawPulserInfo()
     {
         if(!pulseSettings.active[i])
         {
-            builder<<"ch "<<i<<": off | ";
+            builder<<"off | ";
         }
         else
         {
             if(pulseSettings.rates[i]==0)
             {
-                builder<<"ch "<<i<<": 1kHz | ";
+                builder<<"1kHz | ";
             }
             else if(pulseSettings.rates[i]==1)
             {
-                builder<<"ch "<<i<<": 10kHz | ";
+                builder<<"10kHz | ";
             }
             else if(pulseSettings.rates[i]==2)
             {
-                builder<<"ch "<<i<<": 100kHz | ";
+                builder<<"100kHz | ";
             }
             else if(pulseSettings.rates[i]==3)
             {
-                builder<<"ch "<<i<<": 1MHz | ";
+                builder<<"1MHz | ";
             }
             else
             {
-                builder<<"ch "<<i<<": WTF | ";
+                builder<<"WTF | ";
             }
         }
     }

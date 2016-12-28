@@ -26,6 +26,7 @@
 // includes from other libraries
 #include<boost/thread.hpp>
 // includes from ORCHID
+#include"Utility/OrchidLogger.h"
 
 namespace InterThread
 {
@@ -37,6 +38,7 @@ class FileOutputThreadController
 public:
     FileOutputThreadController():
         currentState(FileOutputThreadState::Waiting),
+        priorState(FileOutputThreadState::Waiting),
         fileThreadWaiting(false), threadDone(false){}
     ~FileOutputThreadController(){}
     
@@ -75,11 +77,13 @@ public:
     }
     void setToWaiting()
     {
+        BOOST_LOG_SEV(OrchidLog::get(), Information) << "FO CTRL: Set to waiting";
         this->currentState.store(FileOutputThreadState::Waiting);
         if(this->fileThreadWaiting.load()) this->waitCondition.notify_all();
     }
     void setToWriting()
     {
+        BOOST_LOG_SEV(OrchidLog::get(), Information) << "FO CTRL: Set to writing";
         this->currentState.store(FileOutputThreadState::Writing);
         if(this->fileThreadWaiting.load()) this->waitCondition.notify_all();
     }
