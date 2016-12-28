@@ -1,0 +1,6 @@
+
+turnon
+dotests
+quit
+
+
