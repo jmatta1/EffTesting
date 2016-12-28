@@ -32,42 +32,68 @@
 namespace Digitizer
 {
 
-enum class InternalPulserRate {OneKHz, TenKHz, HundredKHz, OneMHz};
+enum class InternalPulserRate {Off, OneKHz, TenKHz, HundKHz, OneMHz};
 struct PulserSetting
 {
 public:
-    void setChannelRate(int channel, InternalPulserRate rate)
+    void setOverallRate(unsigned oneKHzCt, unsigned tenKHzCt, unsigned hundKHzCt, unsigned oneMHzCt)
     {
-        active[channel] = true;
-        rates[channel] = lookupRateValue(rate);
-    }
-    void setAllChannelRates(InternalPulserRate rate)
-    {
-        unsigned int val = lookupRateValue(rate);
-        for(auto&& x: rates) x = val;
-        for(auto&& x: active) x = true;
-    }
-    void disableChannelPulser(int channel)
-    {
-        active[channel] = false;
-        rates[channel] = 0;
+        InternalPulserRate rateList[5] = {InternalPulserRate::OneKHz,  InternalPulserRate::TenKHz,
+                                          InternalPulserRate::HundKHz, InternalPulserRate::OneMHz,
+                                          InternalPulserRate::Off};
+        unsigned counts[5];
+        counts[0] = oneKHzCt;
+        counts[1] = tenKHzCt;
+        counts[2] = hundKHzCt;
+        counts[3] = oneMHzCt;
+        counts[4] = (16 - (oneKHzCt + tenKHzCt + hundKHzCt + oneMHzCt));
+        
+        unsigned baseIndex = 0;
+        for(int i=0; i<5; ++i)
+        {
+            unsigned limit = baseIndex + counts[i];
+            for(int j=baseIndex; j<limit; ++j)
+            {
+                setChannel(j,rateList[i]);
+            }
+            baseIndex = limit;
+        }
     }
 
     std::array<unsigned int, 16> rates;
     std::array<bool, 16> active;
 private:
+    void setChannel(unsigned chan, InternalPulserRate rate)
+    {
+        rates[chan] = lookupRateValue(rate);
+        active[chan] = lookupChannelStatus(rate);
+    }
+
     unsigned int lookupRateValue(InternalPulserRate rate)
     {
         switch(rate)
         {
+        case InternalPulserRate::Off:
+            return 0;
         case InternalPulserRate::OneKHz:
             return 0;
         case InternalPulserRate::TenKHz:
             return 1;
-        case InternalPulserRate::HundredKHz:
+        case InternalPulserRate::HundKHz:
             return 2;
         case InternalPulserRate::OneMHz:
             return 3;
+        }
+    }
+    bool lookupChannelStatus(InternalPulserRate rate)
+    {
+        if(rate == InternalPulserRate::Off)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
         }
     }
 };
@@ -87,7 +113,7 @@ public:
     //and then wait a little more time
     void setupDigitizer();
     
-    void setupPulsing(PulserSetting& pulseSetting){}
+    void setupPulsing(PulserSetting& pulseSetting);
     
     //puts the digitizer in running mode
     void startAcquisition();

@@ -115,6 +115,85 @@ void Vx1730Digitizer::setupDigitizer()
     this->calculateMaximumSizes();
 }
 
+void Vx1730Digitizer::setupPulsing(PulserSetting& pulseSetting)
+{
+    using LowLvl::Vx1730ReadRegisters;
+    using LowLvl::Vx1730IndivReadRegistersAddr;
+    using LowLvl::Vx1730IndivReadRegistersOffs;
+    //first read the channel settings from the registers
+    int stopInd = this->channelStartInd + this->numChannel;
+    for(int i=0; i<16; ++i)
+    {
+        addrArray[i] = (Vx1730IndivWriteRegistersAddr<Vx1730ReadRegisters::DppAlgorithmCtrl>::value +
+                        (i * Vx1730IndivWriteRegistersOffs<Vx1730ReadRegisters::DppAlgorithmCtrl>::value));
+        rdbkArray[i] = 0x00000000;
+        cycleErrsArray[i] = CAENComm_Success;
+    }
+    //call the read
+    CAENComm_ErrorCode overallErr = CAENComm_MultiRead32(this->digitizerHandle,
+                                                         addrArray, 16,
+                                                         rdbkArray, cycleErrsArray);
+    //test for errors in the individual cycles
+    for(int i=0; i<16; ++i)
+    {
+        if(cycleErrsArray[i] < 0)
+        {
+            BOOST_LOG_SEV(lg, Error) << "ACQ Thread: Error Reading From Address: 0x" << std::hex << std::setw(4) << std::setfill('0') << addrArray[i] << std::dec;
+            this->writeErrorAndThrow(cycleErrsArray[i]);
+        }
+    }
+    //test for an overall error
+    if(overallErr < 0)
+    {
+        BOOST_LOG_SEV(lg, Error) << "ACQ Thread: Overall Error In Reading Pulse settings for Digitizer #" << moduleNumber;
+        this->writeErrorAndThrow(overallErr);
+    }
+    
+    //now go through and modify the channels to the appropriate settings
+    for(int i=0; i<16; ++i)
+    {
+        unsigned int tempValue = rdbkArray[i];
+        if(pulseSetting.active[i])
+        {
+            pulseMask = 0x100;
+            pulseMask |= (pulseSetting.rates[i] < 9);
+            //now make sure the bits are clear by anding the temporary value with
+            //a value that is 1 everywhere but bits 8, 9, and 10 (indexing from 0)
+            tempValue &= (~0x700);
+            //now set data array to that cleared value orred with our pulse mask
+            dataArray[i] = (tempValue | pulseMask);
+        }
+        else
+        {
+            //the channel should not pulse, therefor clear the bits in tempValue
+            //and set data array to that value
+            tempValue &= (~0x700);
+            dataArray[i] = tempValue;
+        }
+    }
+    //now call the write
+    CAENComm_ErrorCode overallErr = CAENComm_MultiWrite32(this->digitizerHandle,
+                                                          addrArray, 16,
+                                                          dataArray, cycleErrsArray);
+    //test for errors in the individual cycles
+    for(int i=0; i<16; ++i)
+    {
+        if(cycleErrsArray[i] < 0)
+        {
+            BOOST_LOG_SEV(lg, Error) << "ACQ Thread: Error Writing To Address: 0x" << std::hex << std::setw(4) << std::setfill('0') << addrArray[i] << std::dec;
+            this->writeErrorAndThrow(cycleErrsArray[i]);
+        }
+    }
+    //test for an overall error
+    if(overallErr < 0)
+    {
+        BOOST_LOG_SEV(lg, Error) << "ACQ Thread: Overall Error In Writing Pulse settings for Digitizer #" << moduleNumber;
+        this->writeErrorAndThrow(overallErr);
+    }
+    BOOST_LOG_SEV(lg, Information) << "ACQ Thread: Pausing for digitizer " << moduleNumber << " pulser stabilization.";
+    boost::this_thread::sleep_for(boost::chrono::seconds(1));
+}
+
 //puts the digitizer in running mode
 void Vx1730Digitizer::startAcquisition()
 {
@@ -746,20 +825,6 @@ unsigned int Vx1730Digitizer::calculateDppAlgCtrlRegVal(int i)
     }
     output |= ((channelData->dppTriggerCounting[i] & 0x01UL) << 5);
     output |= ((channelData->discMode[i] & 0x01UL) << 6);
-    //skip the internal test pulse stuff
-    
-    //code for using the internal test pulse
-//    if( (i != 0) || (i != 2) || (i != 4) || (i != 6) || (i != 8) || (i != 10) || (i != 12) || (i != 14) )
-    /*if( i > 7)
-    {
-        output |= 0x100;//internal test pulser on
-        output |= 0x400;//100kHz
-    }
-    else
-    {
-        output |= 0x100;//internal test pulser on
-        output |= 0x600;//1MHz
-    }*/
     
     output |= ((channelData->pulsePolarity[i] & 0x01UL) << 16);
     output |= ((channelData->trigMode[i] & 0x03UL) << 18);
@@ -768,6 +833,7 @@ unsigned int Vx1730Digitizer::calculateDppAlgCtrlRegVal(int i)
     {
         output |= 0x01000000;
     }
+    
     //pile up rejection goes here
     if(channelData->psdCutBelowThresh[i])
     {
