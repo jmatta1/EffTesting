@@ -800,8 +800,8 @@ void UIThread::startTestDataTaking()
     wclear(this->textWindow);
     mvwprintw(this->textWindow, 0, 0, "Waiting For Acquisition Starts");
     wrefresh(this->textWindow);
-    while(this->acqControl->getThreadsWaiting() > 0)
-    {//until we see the acquisition threads are done waiting on their wait condition, sleep and spin
+    while(!(this->acqControl->getThreadsStarted() == 0))
+    {//until we see the acquisition threads are started sleep and spin
         boost::this_thread::sleep_for(this->refreshPeriod);
     }
     //TODO: Add code for sending acquisition start signal from USB device for the S-In front panel LEMO
@@ -1444,7 +1444,7 @@ void UIThread::startDataTaking()
     wclear(this->textWindow);
     mvwprintw(this->textWindow, 0, 0, "Waiting For Acquisition Starts");
     wrefresh(this->textWindow);
-    while(this->acqControl->getThreadsWaiting() > 0)
+    while(this->acqControl->getThreadsStarted() != this->numAcqThreads)
     {//until we see the acquisition threads are done waiting on their wait condition, sleep and spin
         boost::this_thread::sleep_for(this->refreshPeriod);
     }
@@ -1463,7 +1463,7 @@ void UIThread::stopDataTaking()
     wclear(this->textWindow);
     mvwprintw(this->textWindow, 0, 0, "Waiting For Acquisition Stop");
     wrefresh(this->textWindow);
-    while(this->numAcqThreads > this->acqControl->getThreadsWaiting())
+    while(this->numAcqThreads != this->acqControl->getThreadsStopped())
     {//until we see the acquisition threads waiting on their wait condition, sleep and spin
         boost::this_thread::sleep_for(this->refreshPeriod);
         this->procQueuePair->wakeAllProducer();
