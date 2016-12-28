@@ -761,6 +761,9 @@ void UIThread::runRateTests()
         while(milliSeconds < 600000)
         {
             this->drawTestingScreen();
+            refresh();
+            wrefresh(this->textWindow);
+            wrefresh(this->messageWindow);
             boost::this_thread::sleep_for(this->refreshPeriod);
         }
         //now shut this run down
@@ -800,7 +803,7 @@ void UIThread::startTestDataTaking()
     wclear(this->textWindow);
     mvwprintw(this->textWindow, 0, 0, "Waiting For Acquisition Starts");
     wrefresh(this->textWindow);
-    while(!(this->acqControl->getThreadsStarted() == 0))
+    while(this->acqControl->getThreadsStarted() == 0)
     {//until we see the acquisition threads are started sleep and spin
         boost::this_thread::sleep_for(this->refreshPeriod);
     }
