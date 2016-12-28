@@ -29,6 +29,73 @@
 
 namespace Digitizer
 {
+
+enum class InternalPulserRate {Off, OneKHz, TenKHz, HundKHz, OneMHz};
+struct PulserSetting
+{
+public:
+    void setOverallRate(unsigned oneKHzCt, unsigned tenKHzCt, unsigned hundKHzCt, unsigned oneMHzCt)
+    {
+        InternalPulserRate rateList[5] = {InternalPulserRate::OneKHz,  InternalPulserRate::TenKHz,
+                                          InternalPulserRate::HundKHz, InternalPulserRate::OneMHz,
+                                          InternalPulserRate::Off};
+        unsigned counts[5];
+        counts[0] = oneKHzCt;
+        counts[1] = tenKHzCt;
+        counts[2] = hundKHzCt;
+        counts[3] = oneMHzCt;
+        counts[4] = (16 - (oneKHzCt + tenKHzCt + hundKHzCt + oneMHzCt));
+        
+        unsigned baseIndex = 0;
+        for(int i=0; i<5; ++i)
+        {
+            unsigned limit = baseIndex + counts[i];
+            for(int j=baseIndex; j<limit; ++j)
+            {
+                setChannel(j,rateList[i]);
+            }
+            baseIndex = limit;
+        }
+    }
+
+    std::array<unsigned int, 16> rates;
+    std::array<bool, 16> active;
+private:
+    void setChannel(unsigned chan, InternalPulserRate rate)
+    {
+        rates[chan] = lookupRateValue(rate);
+        active[chan] = lookupChannelStatus(rate);
+    }
+
+    unsigned int lookupRateValue(InternalPulserRate rate)
+    {
+        switch(rate)
+        {
+        case InternalPulserRate::Off:
+            return 0;
+        case InternalPulserRate::OneKHz:
+            return 0;
+        case InternalPulserRate::TenKHz:
+            return 1;
+        case InternalPulserRate::HundKHz:
+            return 2;
+        case InternalPulserRate::OneMHz:
+            return 3;
+        }
+    }
+    bool lookupChannelStatus(InternalPulserRate rate)
+    {
+        if(rate == InternalPulserRate::Off)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+    }
+};
+
 //Todo: add some mechanism to reduce the number of individual channel reads
 //  while acquiring data, maybe use the number of aggregates to trigger an IRQ
 //  as a bare minimum to wait for?
@@ -48,6 +115,8 @@ public:
     void startAcquisition();
     //takes the digitizer out of running mode
     void stopAcquisition();
+    
+    void setupPulsing(PulserSetting& pulseSetting);
     
     //checks if there is an event ready, if yes it grabs the event, if false
     //it waits on an interrupt from the digitizer
