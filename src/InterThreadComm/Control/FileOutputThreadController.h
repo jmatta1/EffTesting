@@ -56,7 +56,10 @@ public:
     //files for the UI thread
     void setToTerminate()
     {
-        this->currentState.store(FileOutputThreadState::Terminate);
+        {
+            boost::unique_lock<boost::mutex> waitLock(this->waitMutex);
+            this->currentState.store(FileOutputThreadState::Terminate);
+        }
         if(this->fileThreadWaiting.load()) this->waitCondition.notify_all();
     }
     bool setNewRunParameters(const std::string& rTitle, int runNum)
@@ -65,26 +68,35 @@ public:
         //not yet been acknowledged, if that is the case then we cannot change
         //parameters yet
         if(FileOutputThreadState::NewRunParams == this->currentState.load()) return false;
-        //change the parameter *then* change the state
-        //this way the file output thread does not check the parameters
-        //while we are modifying them
-        this->runTitle = rTitle;
-        this->runNumber = runNum;
-        this->priorState.store(this->currentState.load());
-        this->currentState.store(FileOutputThreadState::NewRunParams);
-        if(this->fileThreadWaiting.load()) this->waitCondition.notify_all();
+        {
+            boost::unique_lock<boost::mutex> waitLock(this->waitMutex);
+            //change the parameter *then* change the state
+            //this way the file output thread does not check the parameters
+            //while we are modifying them
+            this->runTitle = rTitle;
+            this->runNumber = runNum;
+            this->priorState.store(this->currentState.load());
+            this->currentState.store(FileOutputThreadState::NewRunParams);
+            if(this->fileThreadWaiting.load()) this->waitCondition.notify_all();
+        }
         return true;
     }
     void setToWaiting()
     {
         BOOST_LOG_SEV(OrchidLog::get(), Information) << "FO CTRL: Set to waiting";
-        this->currentState.store(FileOutputThreadState::Waiting);
+        {
+            boost::unique_lock<boost::mutex> waitLock(this->waitMutex);
+            this->currentState.store(FileOutputThreadState::Waiting);
+        }
         if(this->fileThreadWaiting.load()) this->waitCondition.notify_all();
     }
     void setToWriting()
     {
         BOOST_LOG_SEV(OrchidLog::get(), Information) << "FO CTRL: Set to writing";
-        this->currentState.store(FileOutputThreadState::Writing);
+        {
+            boost::unique_lock<boost::mutex> waitLock(this->waitMutex);
+            this->currentState.store(FileOutputThreadState::Writing);
+        }
         if(this->fileThreadWaiting.load()) this->waitCondition.notify_all();
     }
     void uiGetRunParams(std::string& rTitle, int& rNum)
