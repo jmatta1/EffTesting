@@ -34,27 +34,61 @@ class ProcessingThreadControl
 {
 public:
     ProcessingThreadControl():procState(ProcessingThreadState::Stopped),
-        termAckCount(0), waitCount(0) {}
+        termAckCount(0), stopAckCount(0), startAckCount(0) {}
     
     //functions to be accessed by the processing threads
     ProcessingThreadState getCurrentState(){return procState.load();}
     void waitForChange();
     void acknowledgeTerminate(){termAckCount.fetch_add(1);}
+    void acknowledgeStart(){startAckCount.fetch_add(1);}
 
     //functions to be accessed by the UI thread
-    void setToRunning(){procState.store(ProcessingThreadState::Running); procThreadWaitCondition.notify_all();}
-    void setToStopped(){procState.store(ProcessingThreadState::Stopped);}
-    void setToTerminate(){procState.store(ProcessingThreadState::Terminate); procThreadWaitCondition.notify_all();}
+    void setToRunning()
+    {
+        //enter an artificial block to create and destroy lock before we notify
+        {
+            boost::unique_lock<boost::mutex> lock(this->waitMutex);
+            if(procState.load() != ProcessingThreadState::Running) termAckCount.store(0);
+            procState.store(ProcessingThreadState::Running);
+        }
+        procThreadWaitCondition.notify_all();
+    }
+    void setToStopped()
+    {
+        //enter an artificial block to create and destroy lock before we notify
+        {
+            boost::unique_lock<boost::mutex> lock(this->waitMutex);
+            if(procState.load() != ProcessingThreadState::Stopped) stopAckCount.store(0);
+            procState.store(ProcessingThreadState::Stopped);
+        }
+        procThreadWaitCondition.notify_all();
+    }
+    void setToTerminate()
+    {
+        //enter an artificial block to create and destroy lock before we notify
+        {
+            boost::unique_lock<boost::mutex> lock(this->waitMutex);
+            if(procState.load() != ProcessingThreadState::Terminate) termAckCount.store(0);
+            procState.store(ProcessingThreadState::Terminate);
+        }
+        procThreadWaitCondition.notify_all();
+    }
     
-    int getThreadsWaiting(){return waitCount.load();}
+    int getThreadsWaiting(){return stopAckCount.load();}
+    int getThreadsStarted(){return startAckCount.load();}
     int getThreadsTerminated(){return termAckCount.load();}
     
 private:
+    //called by wait for change
+    void acknowledgeStop(){stopAckCount.fetch_add(1);}
+    
     std::atomic<ProcessingThreadState> procState;
     std::atomic_uint termAckCount;
+    std::atomic_uint stopAckCount;
+    std::atomic_uint startAckCount;
     
-    std::atomic_uint waitCount;
-    boost::condition_variable procThreadWaitCondition;//we create the mutex for this on the fly so everyone can wake up simultaneously
+    boost::mutex waitMutex;
+    boost::condition_variable procThreadWaitCondition;
 };
 
 }
