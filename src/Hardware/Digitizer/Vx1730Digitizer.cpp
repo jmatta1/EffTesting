@@ -200,7 +200,7 @@ void Vx1730Digitizer::setupPulsing(PulserSetting& pulseSetting)
     {
         if(pulseSetting.active[i])
         {
-            output |= (0x01UL << channelData->channelNumber[i]);
+            enMask |= (0x01UL << channelData->channelNumber[i]);
         }
     }
     overallErr = CAENComm_Write32(digitizerHandle, Vx1730CommonWriteRegistersAddr<Vx1730WriteRegisters::ChanEnMask>::value, enMask);
