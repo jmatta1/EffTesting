@@ -248,6 +248,25 @@ void Vx1730Digitizer::setupPulsing(PulserSetting& pulseSetting)
         BOOST_LOG_SEV(lg, Error) << "ACQ Thread: Overall Error In Writing Pulse settings for Digitizer #" << moduleNumber;
         this->writeErrorAndThrow(overallErr);
     }
+
+    //now enable only the channels we are using for pulsing
+    using LowLvl::Vx1730WriteRegisters;
+    using LowLvl::Vx1730CommonWriteRegistersAddr;
+    
+    unsigned int enMask = 0x00000000;
+    for(int i=0; i<16; ++i)
+    {
+        if(pulseSetting.active[i])
+        {
+            output |= (0x01UL << channelData->channelNumber[i]);
+        }
+    }
+    overallErr = CAENComm_Write32(digitizerHandle, Vx1730CommonWriteRegistersAddr<Vx1730WriteRegisters::ChanEnMask>::value, enMask);
+    if(overallErr < 0)
+    {
+        BOOST_LOG_SEV(lg, Error) << "ACQ Thread: Error In setting channel enable mask from pulse settings for Digitizer #" << moduleNumber;
+        this->writeErrorAndThrow(overallErr);
+    }
     BOOST_LOG_SEV(lg, Information) << "ACQ Thread: Pausing for digitizer " << moduleNumber << " pulser stabilization.";
     boost::this_thread::sleep_for(boost::chrono::seconds(1));
 }
