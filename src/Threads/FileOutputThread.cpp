@@ -191,6 +191,7 @@ void FileOutputThread::operator()()
             this->emptyWriteQueueBeforeChange();
             this->outFile->closeFile();
             this->fileData->setInitState('n');
+            BOOST_LOG_SEV(lg, Information) << "FO Thread: leaving write state";
             break;
         }
     }
