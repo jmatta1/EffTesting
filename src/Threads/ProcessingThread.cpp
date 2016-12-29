@@ -40,10 +40,11 @@ void ProcessingThread::operator()()
             break;
         case InterThread::ProcessingThreadState::Stopped:
             BOOST_LOG_SEV(lg, Information) << "PR Thread " << threadNumber << ": Stopped and waiting for instructions";
-            this->controller->waitForChange();
+            this->controller->waitForChange();//automatically acknowledges stop
             break;
         case InterThread::ProcessingThreadState::Running:
             BOOST_LOG_SEV(lg, Information) << "PR Thread " << threadNumber << ": Starting Processing";
+            this->controller->acknowledgeStart();
             this->doProcessingLoop();
             BOOST_LOG_SEV(lg, Information) << "PR Thread " << threadNumber << ": Clearing buffer queue";
             this->emptyProcessingBuffer();
