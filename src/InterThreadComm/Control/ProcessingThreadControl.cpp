@@ -29,9 +29,9 @@ void ProcessingThreadControl::waitForChange()
 {
     boost::unique_lock<boost::mutex> waitLock(waitMutex);
     acknowledgeStop();
-    while(this->acqState.load() == AcquisitionThreadState::Stopped)
+    while(this->procState.load() == ProcessingThreadState::Stopped)
     {
-        acqThreadWaitCondition.wait(waitLock);
+        procThreadWaitCondition.wait(waitLock);
     }
     //the lock will release on deconstruction
 }

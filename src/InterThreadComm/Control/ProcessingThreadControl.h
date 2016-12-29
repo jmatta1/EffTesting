@@ -34,7 +34,7 @@ class ProcessingThreadControl
 {
 public:
     ProcessingThreadControl():procState(ProcessingThreadState::Stopped),
-        termAckCount(0), waitCount(0) {}
+        termAckCount(0), stopAckCount(0), startAckCount(0) {}
     
     //functions to be accessed by the processing threads
     ProcessingThreadState getCurrentState(){return procState.load();}
@@ -48,7 +48,7 @@ public:
         //enter an artificial block to create and destroy lock before we notify
         {
             boost::unique_lock<boost::mutex> lock(this->waitMutex);
-            if(acqState.load() != ProcessingThreadState::Running) termAckCount.store(0);
+            if(procState.load() != ProcessingThreadState::Running) termAckCount.store(0);
             procState.store(ProcessingThreadState::Running);
         }
         procThreadWaitCondition.notify_all();
@@ -58,7 +58,7 @@ public:
         //enter an artificial block to create and destroy lock before we notify
         {
             boost::unique_lock<boost::mutex> lock(this->waitMutex);
-            if(acqState.load() != ProcessingThreadState::Stopped) termAckCount.store(0);
+            if(procState.load() != ProcessingThreadState::Stopped) stopAckCount.store(0);
             procState.store(ProcessingThreadState::Stopped);
         }
         procThreadWaitCondition.notify_all();
@@ -68,7 +68,7 @@ public:
         //enter an artificial block to create and destroy lock before we notify
         {
             boost::unique_lock<boost::mutex> lock(this->waitMutex);
-            if(acqState.load() != ProcessingThreadState::Terminate) termAckCount.store(0);
+            if(procState.load() != ProcessingThreadState::Terminate) termAckCount.store(0);
             procState.store(ProcessingThreadState::Terminate);
         }
         procThreadWaitCondition.notify_all();
