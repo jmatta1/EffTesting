@@ -38,7 +38,8 @@ class FileOutputThreadController
 public:
     FileOutputThreadController():
         currentState(FileOutputThreadState::Waiting),
-        threadRunning(false), threadWaiting(false), threadDone(false){}
+        threadRunning(false), threadWaiting(false), threadDone(false),
+        runTitle(""), runNumber(0){}
     ~FileOutputThreadController(){}
     
     //functions for the file thread to access
