@@ -38,7 +38,7 @@ class FileOutputThreadController
 public:
     FileOutputThreadController():
         currentState(FileOutputThreadState::Waiting),
-        threadRunning(false), threadWaiting(false), threadDone(false),
+        threadRunning(false), threadHasNewParams(false), threadWaiting(false), threadDone(false),
         runTitle(""), runNumber(0){}
     ~FileOutputThreadController(){}
     
@@ -53,6 +53,7 @@ public:
         rTitle=this->runTitle;
         rNum=this->runNumber;
         this->currentState.store(FileOutputThreadState::Waiting);
+        acknowledgeNewParams();
     }
     
     //files for the UI thread
@@ -80,6 +81,7 @@ public:
             this->runTitle = rTitle;
             this->runNumber = runNum;
             threadWaiting.store(false);
+            threadHasNewParams.store(false);
             this->currentState.store(FileOutputThreadState::NewRunParams);
         }
         this->waitCondition.notify_all();
@@ -114,8 +116,10 @@ public:
     bool isDone(){return this->threadDone.load();}
     bool isRunning(){return this->threadRunning.load();}
     bool isWaiting(){return this->threadWaiting.load();}
+    bool hasReadParams(){return this->threadHasNewParams.load();}
 private:
     void acknowledgeStop(){threadWaiting.store(true);}
+    void acknowledgeNewParams(){threadHasNewParams.store(true);}
     //state variable
     std::atomic<FileOutputThreadState> currentState;
     
@@ -125,6 +129,7 @@ private:
     
     //termination checking
     std::atomic_bool threadDone;
+    std::atomic_bool threadHasNewParams;
     std::atomic_bool threadWaiting;
     std::atomic_bool threadRunning;
     
