@@ -38,19 +38,20 @@ class FileOutputThreadController
 public:
     FileOutputThreadController():
         currentState(FileOutputThreadState::Waiting),
-        priorState(FileOutputThreadState::Waiting),
-        fileThreadWaiting(false), threadDone(false){}
+        threadRunning(false), threadWaiting(false), threadDone(false){}
     ~FileOutputThreadController(){}
     
     //functions for the file thread to access
     FileOutputThreadState getCurrentState(){return this->currentState.load();}
     void waitForNewState();
     void setThreadDone(){this->threadDone.store(true);}
+    void acknowledgeStart(){threadRunning.store(true);}
+    
     void getNewRunParams(std::string& rTitle, int& rNum)
     {
         rTitle=this->runTitle;
         rNum=this->runNumber;
-        this->currentState.store(this->priorState.load());
+        this->currentState.store(FileOutputThreadState::Waiting);
     }
     
     //files for the UI thread
@@ -58,16 +59,18 @@ public:
     {
         {
             boost::unique_lock<boost::mutex> waitLock(this->waitMutex);
+            if(this->currentState.load() != FileOutputThreadState::Terminate) threadDone.store(false);
             this->currentState.store(FileOutputThreadState::Terminate);
         }
-        if(this->fileThreadWaiting.load()) this->waitCondition.notify_all();
+        this->waitCondition.notify_all();
     }
     bool setNewRunParameters(const std::string& rTitle, int runNum)
     {
         //check to make certain we have not already set a title change that has
         //not yet been acknowledged, if that is the case then we cannot change
         //parameters yet
-        if(FileOutputThreadState::NewRunParams == this->currentState.load()) return false;
+        if(FileOutputThreadState::Waiting != this->currentState.load()) return false;
+        //block to scope the lock
         {
             boost::unique_lock<boost::mutex> waitLock(this->waitMutex);
             //change the parameter *then* change the state
@@ -75,10 +78,10 @@ public:
             //while we are modifying them
             this->runTitle = rTitle;
             this->runNumber = runNum;
-            this->priorState.store(this->currentState.load());
+            threadWaiting.store(false);
             this->currentState.store(FileOutputThreadState::NewRunParams);
-            if(this->fileThreadWaiting.load()) this->waitCondition.notify_all();
         }
+        this->waitCondition.notify_all();
         return true;
     }
     void setToWaiting()
@@ -86,18 +89,20 @@ public:
         BOOST_LOG_SEV(OrchidLog::get(), Information) << "FO CTRL: Set to waiting";
         {
             boost::unique_lock<boost::mutex> waitLock(this->waitMutex);
+            if(this->currentState.load() != FileOutputThreadState::Waiting) threadWaiting.store(false);
             this->currentState.store(FileOutputThreadState::Waiting);
         }
-        if(this->fileThreadWaiting.load()) this->waitCondition.notify_all();
+        this->waitCondition.notify_all();
     }
     void setToWriting()
     {
         BOOST_LOG_SEV(OrchidLog::get(), Information) << "FO CTRL: Set to writing";
         {
             boost::unique_lock<boost::mutex> waitLock(this->waitMutex);
+            if(this->currentState.load() != FileOutputThreadState::Writing) threadRunning.store(false);
             this->currentState.store(FileOutputThreadState::Writing);
         }
-        if(this->fileThreadWaiting.load()) this->waitCondition.notify_all();
+        this->waitCondition.notify_all();
     }
     void uiGetRunParams(std::string& rTitle, int& rNum)
     {
@@ -106,20 +111,21 @@ public:
     }
 
     bool isDone(){return this->threadDone.load();}
-    bool isWaiting(){return this->fileThreadWaiting.load();}
+    bool isRunning(){return this->threadRunning.load();}
+    bool isWaiting(){return this->threadWaiting.load();}
 private:
+    void acknowledgeStop(){threadWaiting.store(true);}
     //state variable
     std::atomic<FileOutputThreadState> currentState;
-    //holds the state of the system before we set NewRunParams
-    std::atomic<FileOutputThreadState> priorState;
     
     //variables for waiting to wake up
     boost::mutex waitMutex;
     boost::condition_variable waitCondition;
-    std::atomic_bool fileThreadWaiting;
     
     //termination checking
     std::atomic_bool threadDone;
+    std::atomic_bool threadWaiting;
+    std::atomic_bool threadRunning;
     
     //run parameters, namely run title and run number while run number coule be
     //an atomic variable, run title must be a simple string. To protect things

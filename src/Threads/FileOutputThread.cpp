@@ -187,6 +187,7 @@ void FileOutputThread::operator()()
             break;
         case InterThread::FileOutputThreadState::Writing:
             BOOST_LOG_SEV(lg, Information) << "FO Thread: Writing";
+            this->fileThreadController->acknowledgeStart();
             this->doWriteLoop();
             this->emptyWriteQueueBeforeChange();
             this->outFile->closeFile();
