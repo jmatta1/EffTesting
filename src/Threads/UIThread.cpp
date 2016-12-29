@@ -728,9 +728,20 @@ void UIThread::runRateTests()
     auto setRunsLambda = 
     [this](const std::string& runTil, const int runNum)
     {
+        //set the run parameters
         while(!this->fileControl->setNewRunParameters(runTil, runNum))
         {
-            boost::this_thread::sleep_for(this->refreshPeriod);
+            boost::this_thread::sleep_for(boost::chrono::microseconds(1));
+        }
+        //then wait for acknowledgement of new params
+        while(!this->fileControl->hasReadParams())
+        {
+            boost::this_thread::sleep_for(boost::chrono::microseconds(1));
+        }
+        //then wait for the thread to be in waiting mode again
+        while(!this->fileControl->isWaiting())
+        {
+            boost::this_thread::sleep_for(boost::chrono::microseconds(1));
         }
     };
     //this is the run name for everything to come
@@ -767,11 +778,64 @@ void UIThread::runRateTests()
             boost::this_thread::sleep_for(this->refreshPeriod);
         }
         //now shut this run down
-        this->stopDataTaking();
+        this->stopTestDataTaking();
         BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Ending test: " << i << "  With Rate: " << totalRate << "Hz";
         //now pause a few seconds
-        boost::this_thread::sleep_for(boost::chrono::seconds(2));
+        boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
     }
+}
+
+void UIThread::stopTestDataTaking()
+{
+    BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Acquistion Threads Set To Stop";
+    this->acqControl->setToStopped();
+    this->procQueuePair->setProducerForceWake();
+    this->procQueuePair->wakeAllProducer();
+    wclear(this->textWindow);
+    mvwprintw(this->textWindow, 0, 0, "Waiting For Acquisition Stop");
+    wrefresh(this->textWindow);
+    while(this->numAcqThreads != this->acqControl->getThreadsStopped())
+    {//until we see the acquisition threads waiting on their wait condition, sleep and spin
+        boost::this_thread::sleep_for(boost::chrono::microseconds(1));
+        this->procQueuePair->wakeAllProducer();
+    }
+    this->procQueuePair->clearForce();
+    
+    BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Event Processing Threads Set To Stop";
+    this->procControl->setToStopped();
+    this->fileMultiQueue->setForceStayAwake();
+    this->procQueuePair->setConsumerForceWake();
+    this->fileMultiQueue->wakeAllProducer<Utility::ProcessingQueueIndex>();
+    this->procQueuePair->wakeAllConsumer();
+    wclear(this->textWindow);
+    mvwprintw(this->textWindow, 0, 0, "Waiting For Processing Stop");
+    wrefresh(this->textWindow);
+    while(this->numProcThreads > this->procControl->getThreadsWaiting())
+    {//until we see the acquisition threads waiting on their wait condition, sleep and spin
+        this->fileMultiQueue->wakeAllConsumer();
+        this->fileMultiQueue->wakeAllProducer<Utility::ProcessingQueueIndex>();
+        this->procQueuePair->wakeAllConsumer();
+        boost::this_thread::sleep_for(boost::chrono::microseconds(1));
+    }
+    this->procQueuePair->clearForce();
+    this->fileMultiQueue->clearForceStayAwake();
+    
+    BOOST_LOG_SEV(this->lg, Information) << "UI Thread: File Thread Set To Stop";
+    this->fileControl->setToWaiting();
+    //make certain the file thread is not waiting in the multi queue
+    this->fileMultiQueue->setForceStayAwake();
+    this->fileMultiQueue->wakeAllConsumer();
+    wclear(this->textWindow);
+    mvwprintw(this->textWindow, 0, 0, "Waiting For File Thread Stopping");
+    wrefresh(this->textWindow);
+    while(!this->fileControl->isWaiting())
+    {//until we see the file thread waiting on its wait condition, sleep and spin
+        boost::this_thread::sleep_for(boost::chrono::microseconds(1));
+    }
+    this->fileMultiQueue->clearForceStayAwake();
+    BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Setting Mode to Idle";
+    mode = UIMode::Idle;
+    wclear(this->textWindow);
 }
 
 void UIThread::startTestDataTaking()
@@ -790,27 +854,37 @@ void UIThread::startTestDataTaking()
     this->acqData->clearTrigs();
     BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Starting File Writing";
     this->fileControl->setToWriting();
+    wclear(this->textWindow);
+    mvwprintw(this->textWindow, 0, 0, "Waiting For File Output Start");
+    wrefresh(this->textWindow);
     //wait to be certain the file thread is up and running before we start anything else
-    boost::this_thread::sleep_for(this->refreshPeriod);
+    while(!this->fileControl->isRunning())
+    {
+        boost::this_thread::sleep_for(boost::chrono::microseconds(1));
+    }
     //remove slow controls stuff, we aren't using it, just leave it polling
     BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Starting Event Processing";
     this->procControl->setToRunning();
+    wclear(this->textWindow);
+    mvwprintw(this->textWindow, 0, 0, "Waiting For Processing Starts");
+    wrefresh(this->textWindow);
     //wait to be certain the processing threads are up and running before we start anything else
-    boost::this_thread::sleep_for(this->refreshPeriod);
-    BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Online Processing Thread Set To Start";
+    while(this->procControl->getThreadsStarted() != this->numProcThreads)
+    {
+        boost::this_thread::sleep_for(boost::chrono::microseconds(1));
+    }
+    mode = UIMode::Testing;
+    //this->startLine = 0;
     BOOST_LOG_SEV(this->lg, Information) << "UI Thread: Starting Acquisition Thread";
     this->acqControl->setToAcquiring();
     wclear(this->textWindow);
     mvwprintw(this->textWindow, 0, 0, "Waiting For Acquisition Starts");
     wrefresh(this->textWindow);
-    while(this->acqControl->getThreadsStarted() == 0)
+    while(this->acqControl->getThreadsStarted() != numAcqThreads)
     {//until we see the acquisition threads are started sleep and spin
-        boost::this_thread::sleep_for(this->refreshPeriod);
+        boost::this_thread::sleep_for(boost::chrono::microseconds(1));
     }
-    //TODO: Add code for sending acquisition start signal from USB device for the S-In front panel LEMO
     this->startTime = boost::posix_time::microsec_clock::universal_time();
-    mode = UIMode::Testing;
-    //this->startLine = 0;
     wclear(this->textWindow);
 }
 

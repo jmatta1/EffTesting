@@ -147,6 +147,8 @@ private:
     void setRunName();
     // sets the run name, number and description
     void setRunParams();
+    //stops data taking in test mode
+    void stopTestDataTaking();
     
     /*
     ** Private Member Variables
