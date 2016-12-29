@@ -48,7 +48,7 @@ public:
         //enter an artificial block to create and destroy lock before we notify
         {
             boost::unique_lock<boost::mutex> lock(this->waitMutex);
-            if(procState.load() != ProcessingThreadState::Running) termAckCount.store(0);
+            if(procState.load() != ProcessingThreadState::Running) startAckCount.store(0);
             procState.store(ProcessingThreadState::Running);
         }
         procThreadWaitCondition.notify_all();
