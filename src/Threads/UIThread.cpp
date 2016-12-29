@@ -812,6 +812,7 @@ void UIThread::stopTestDataTaking()
     wrefresh(this->textWindow);
     while(this->numProcThreads > this->procControl->getThreadsWaiting())
     {//until we see the acquisition threads waiting on their wait condition, sleep and spin
+        this->fileMultiQueue->wakeAllConsumer();
         this->fileMultiQueue->wakeAllProducer<Utility::ProcessingQueueIndex>();
         this->procQueuePair->wakeAllConsumer();
         boost::this_thread::sleep_for(boost::chrono::microseconds(1));
