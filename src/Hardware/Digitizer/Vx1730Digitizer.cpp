@@ -288,7 +288,7 @@ void Vx1730Digitizer::setupPulsing(PulserSetting& pulseSetting)
     {//enable the flushes
         unsigned int config = calculateBoardConfigRegVal();
         config |= 0x00000001;//set the lowest bit for flushes
-        overallErr = CAENComm_Write32(digitizerHandle, Vx1730CommonWriteRegistersAddr<Vx1730WriteRegisters::BoardConfig>::value, config)
+        overallErr = CAENComm_Write32(digitizerHandle, Vx1730CommonWriteRegistersAddr<Vx1730WriteRegisters::BoardConfig>::value, config);
         if(overallErr < 0)
         {
             BOOST_LOG_SEV(lg, Error) << "ACQ Thread: Error In setting auto data flush from pulse settings for Digitizer #" << moduleNumber;
@@ -298,7 +298,7 @@ void Vx1730Digitizer::setupPulsing(PulserSetting& pulseSetting)
     else
     {//disable the flushes
         unsigned int config = calculateBoardConfigRegVal();
-        overallErr = CAENComm_Write32(digitizerHandle, Vx1730CommonWriteRegistersAddr<Vx1730WriteRegisters::BoardConfig>::value, config)
+        overallErr = CAENComm_Write32(digitizerHandle, Vx1730CommonWriteRegistersAddr<Vx1730WriteRegisters::BoardConfig>::value, config);
         if(overallErr < 0)
         {
             BOOST_LOG_SEV(lg, Error) << "ACQ Thread: Error In stopping auto data flush from pulse settings for Digitizer #" << moduleNumber;
