@@ -44,29 +44,36 @@ static const int tempStartCol = 76;
 static const int volStartCol = 35;
 static const float expAvgSmthFactor = 0.5;
 
-//this is the array of settings for internal pulser rates. There are 72 different
+//this is the array of settings for internal pulser rates. There are 98 different
 //combinations, each is at least 6.8% smaller in rate than the next one, all the
 //rates here are 1MHz or less, the format is: {#channels at 1kHz, #channels at 10kHz,
 //#channels at 100kHz, and #channels at 1MHz}
-static const unsigned int rateCountArray[72][4] =
-{{ 1,  0, 0, 0}, { 2,  0, 0, 0}, { 3,  0, 0, 0}, { 4,  0,  0, 0},
- { 5,  0, 0, 0}, { 6,  0, 0, 0}, { 7,  0, 0, 0}, { 8,  0,  0, 0},
- { 9,  0, 0, 0}, {10,  0, 0, 0}, {11,  0, 0, 0}, {12,  0,  0, 0},
- {13,  0, 0, 0}, {14,  0, 0, 0}, {15,  0, 0, 0}, { 7,  1,  0, 0},
- { 9,  1, 0, 0}, {11,  1, 0, 0}, {13,  1, 0, 0}, {15,  1,  0, 0},
- { 7,  2, 0, 0}, { 9,  2, 0, 0}, {11,  2, 0, 0}, {14,  2,  0, 0},
- { 7,  3, 0, 0}, {10,  3, 0, 0}, {13,  3, 0, 0}, { 6,  4,  0, 0},
- {10,  4, 0, 0}, { 4,  5, 0, 0}, { 8,  5, 0, 0}, { 2,  6,  0, 0},
- { 7,  6, 0, 0}, { 2,  7, 0, 0}, { 7,  7, 0, 0}, { 3,  8,  0, 0},
- { 0,  9, 0, 0}, { 7,  9, 0, 0}, { 4, 10, 0, 0}, { 2, 11,  0, 0},
- { 0, 12, 0, 0}, { 9,  2, 1, 0}, { 8,  3, 1, 0}, { 8,  4,  1, 0},
- { 9,  5, 1, 0}, { 0,  7, 1, 0}, { 2,  8, 1, 0}, { 5,  9,  1, 0},
- { 9,  0, 2, 0}, { 4,  2, 2, 0}, { 0, 14, 1, 0}, { 7,  5,  2, 0},
- { 5,  7, 2, 0}, { 4,  9, 2, 0}, { 4,  1, 3, 0}, { 6,  3,  3, 0},
- { 0,  6, 3, 0}, { 5,  8, 3, 0}, { 2, 11, 3, 0}, { 0,  4,  4, 0},
- { 0,  7, 4, 0}, { 2, 10, 4, 0}, { 7,  3, 5, 0}, { 4,  7,  5, 0},
- { 3,  1, 6, 0}, { 5,  5, 6, 0}, { 0, 10, 6, 0}, { 0,  5,  7, 0},
- { 1,  0, 8, 0}, { 0,  6, 8, 0}, { 0,  2, 9, 0}, { 0,  0, 10, 0}};
+static const unsigned int rateCountArray[98][4] =
+{{1, 0, 0, 0}, {2, 0, 0, 0}, {3, 0, 0, 0}, {4, 0, 0, 0}, 
+ {5, 0, 0, 0}, {6, 0, 0, 0}, {7, 0, 0, 0}, {8, 0, 0, 0},
+ {9, 0, 0, 0}, {10, 0, 0, 0}, {0, 1, 0, 0}, {11, 0, 0, 0},
+ {1, 1, 0, 0}, {12, 0, 0, 0}, {2, 1, 0, 0}, {13, 0, 0, 0},
+ {3, 1, 0, 0}, {14, 0, 0, 0}, {4, 1, 0, 0}, {15, 0, 0, 0},
+ {5, 1, 0, 0}, {7, 1, 0, 0}, {9, 1, 0, 0}, {11, 1, 0, 0},
+ {1, 2, 0, 0}, {13, 1, 0, 0}, {3, 2, 0, 0}, {15, 1, 0, 0},
+ {5, 2, 0, 0}, {7, 2, 0, 0}, {9, 2, 0, 0}, {11, 2, 0, 0},
+ {1, 3, 0, 0}, {14, 2, 0, 0}, {4, 3, 0, 0}, {7, 3, 0, 0},
+ {10, 3, 0, 0}, {0, 4, 0, 0}, {13, 3, 0, 0}, {3, 4, 0, 0},
+ {6, 4, 0, 0}, {10, 4, 0, 0}, {0, 5, 0, 0}, {4, 5, 0, 0},
+ {8, 5, 0, 0}, {2, 6, 0, 0}, {7, 6, 0, 0}, {2, 7, 0, 0},
+ {7, 7, 0, 0}, {3, 8, 0, 0}, {0, 9, 0, 0}, {7, 9, 0, 0},
+ {4, 10, 0, 0}, {4, 0, 1, 0}, {2, 11, 0, 0}, {12, 0, 1, 0},
+ {2, 1, 1, 0}, {0, 12, 0, 0}, {10, 1, 1, 0}, {0, 2, 1, 0},
+ {9, 2, 1, 0}, {8, 3, 1, 0}, {8, 4, 1, 0}, {9, 5, 1, 0},
+ {0, 7, 1, 0}, {2, 8, 1, 0}, {5, 9, 1, 0}, {9, 0, 2, 0},
+ {4, 2, 2, 0}, {0, 14, 1, 0}, {10, 3, 2, 0}, {0, 4, 2, 0},
+ {7, 5, 2, 0}, {5, 7, 2, 0}, {4, 9, 2, 0}, {4, 1, 3, 0},
+ {6, 3, 3, 0}, {0, 6, 3, 0}, {5, 8, 3, 0}, {2, 11, 3, 0},
+ {12, 0, 4, 0}, {2, 1, 4, 0}, {0, 4, 4, 0}, {0, 7, 4, 0},
+ {2, 10, 4, 0}, {2, 0, 5, 0}, {7, 3, 5, 0}, {4, 7, 5, 0},
+ {3, 1, 6, 0}, {5, 5, 6, 0}, {0, 10, 6, 0}, {0, 0, 7, 0},
+ {0, 5, 7, 0}, {1, 0, 8, 0}, {0, 6, 8, 0}, {0, 2, 9, 0},
+ {0, 0, 10, 0}, {0, 0, 0, 1}};
 
 UIThread::UIThread(InterThread::SlowData* slDat, InterThread::AcquisitionData* rtDat,
                    InterThread::FileData* fiDat, Utility::MpodMapper* mpodMap,
@@ -745,10 +752,10 @@ void UIThread::runRateTests()
         }
     };
     //this is the run name for everything to come
-    this->tempRunTitle = "OldDigitizerTests";
+    this->tempRunTitle = "OldDigiRevOrdTest";
     
     //iterate through the set of digitizer settings
-    for(int i=0; i<72; ++i)
+    for(int i=0; i<98; ++i)
     {
         unsigned totalRate = rateCountArray[i][0]     + rateCountArray[i][1] * 10   +
                              rateCountArray[i][2]*100 + rateCountArray[i][3] * 1000;
@@ -769,7 +776,7 @@ void UIThread::runRateTests()
         this->startTestDataTaking();
         milliSeconds=0;
         //draw the testing screen
-        while(milliSeconds < 600000)
+        while(milliSeconds < 150000)
         {
             this->drawTestingScreen();
             refresh();
