@@ -436,6 +436,7 @@ unsigned int Vx1730Digitizer::performFinalReadout(unsigned int* buffer)
     bool eventReady = true;
     unsigned int* bufferEdge = buffer;
     unsigned int dataRead = 0;
+    this->timeStart = boost::posix_time::microsec_clock::universal_time();
     while(eventReady)
     {
         int sizeRead=0;
@@ -487,6 +488,7 @@ unsigned int Vx1730Digitizer::performFinalReadout(unsigned int* buffer)
         }
         eventReady = (readValue & 0x00000001);
     }
+    usReadingData += (boost::posix_time::microsec_clock::universal_time()-timeStart).total_microseconds();
     return dataRead;
 }
 
