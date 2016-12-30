@@ -769,7 +769,7 @@ void UIThread::runRateTests()
         this->startTestDataTaking();
         milliSeconds=0;
         //draw the testing screen
-        while(milliSeconds < 600000)
+        while(milliSeconds < 300000)
         {
             this->drawTestingScreen();
             refresh();
