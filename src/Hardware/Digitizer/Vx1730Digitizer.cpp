@@ -312,6 +312,8 @@ void Vx1730Digitizer::setupPulsing(PulserSetting& pulseSetting)
 //puts the digitizer in running mode
 void Vx1730Digitizer::startAcquisition()
 {
+    usWaitingForInterrupt=0;
+    usReadingData=0;
     using LowLvl::Vx1730WriteRegisters;
     using LowLvl::Vx1730CommonWriteRegistersAddr;
     BOOST_LOG_SEV(lg, Information) << "ACQ Thread: Starting/Arming Acqusition On Digitizer #" << moduleNumber ;
@@ -355,6 +357,8 @@ void Vx1730Digitizer::stopAcquisition()
     BOOST_LOG_SEV(lg, Information) << "ACQ Thread: Digitizer #" << moduleNumber << " Acquisition Stopped/Disarmed";
     BOOST_LOG_SEV(lg, Information) << "ACQ Thread: Digitizer #" << moduleNumber << " Interrupt Wait Attempts: "
                                        << interuptWaitAttempts << " Timeouts: " << interuptTimeouts;
+    BOOST_LOG_SEV(lg, Information) << "ACQ Thread: Digitizer #" << moduleNumber << " Microseconds Waiting: " << usWaitingForInterrupt;
+    BOOST_LOG_SEV(lg, Information) << "ACQ Thread: Digitizer #" << moduleNumber << " Microseconds Reading: " << usReadingData;
     interuptWaitAttempts = 0;
     interuptTimeouts = 0;
     acqRunning = false;
@@ -395,7 +399,9 @@ unsigned int Vx1730Digitizer::waitForInterruptToReadData(unsigned int* buffer)
     //presume acqusition has been started, now wait on an interrupt
     CAENComm_ErrorCode readError;
     ++interuptWaitAttempts;
+    this->timeStart = boost::posix_time::microsec_clock::universal_time();
     readError = CAENComm_IRQWait(digitizerHandle, IrqTimeoutMs);
+    usWaitingForInterrupt += (boost::posix_time::microsec_clock::universal_time()-timeStart).total_microseconds();
     if(readError == CAENComm_CommTimeout)
     {//timing out is not an error
         ++interuptTimeouts;
@@ -492,6 +498,7 @@ unsigned int Vx1730Digitizer::readImpromptuDataAvailable(unsigned int* buffer)
     bool eventReady = true;
     unsigned int* bufferEdge = buffer;
     unsigned int dataRead = 0;
+    this->timeStart = boost::posix_time::microsec_clock::universal_time();
     while(eventReady && (dataRead < maxBufferFillForAnotherRead))
     {
         int sizeRead=0;
@@ -544,6 +551,7 @@ unsigned int Vx1730Digitizer::readImpromptuDataAvailable(unsigned int* buffer)
         }
         eventReady = (readValue & 0x00000001);
     }
+    usReadingData += (boost::posix_time::microsec_clock::universal_time()-timeStart).total_microseconds();
     return dataRead;
 }
 
@@ -555,6 +563,7 @@ unsigned int Vx1730Digitizer::readInterruptDataAvailable(unsigned int* buffer)
     unsigned int* bufferEdge = buffer;
     unsigned int dataRead = 0;
     int readCount = 0;
+    this->timeStart = boost::posix_time::microsec_clock::universal_time();
     while(readCount < eventsPerInterrupt)
     {
         int sizeRead=0;
@@ -599,6 +608,7 @@ unsigned int Vx1730Digitizer::readInterruptDataAvailable(unsigned int* buffer)
         }
         ++readCount;
     }
+    usReadingData += (boost::posix_time::microsec_clock::universal_time()-timeStart).total_microseconds();
     return dataRead;
 }
 

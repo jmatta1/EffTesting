@@ -21,6 +21,7 @@
 // includes for C system headers
 // includes for C++ system headers
 // includes from other libraries
+#include<boost/date_time/posix_time/ptime.hpp>
 #include<CAENComm.h>
 // includes from ORCHID
 #include"InputLib/Blocks/DigitizerModuleData.h"
@@ -180,6 +181,9 @@ private:
     
     unsigned long long interuptWaitAttempts = 0;
     unsigned long long interuptTimeouts = 0;
+    unsigned long long usWaitingForInterrupt=0;
+    unsigned long long usReadingData=0;
+    boost::posix_time::ptime timeStart;
     
     //variables to hold sizes of parts of the readout (in 32 bit ints
     int sizePerEvent[8];
