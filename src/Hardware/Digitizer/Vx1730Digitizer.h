@@ -36,15 +36,15 @@ struct PulserSetting
 public:
     void setOverallRate(unsigned oneKHzCt, unsigned tenKHzCt, unsigned hundKHzCt, unsigned oneMHzCt)
     {
-        InternalPulserRate rateList[5] = {InternalPulserRate::OneKHz,  InternalPulserRate::TenKHz,
-                                          InternalPulserRate::HundKHz, InternalPulserRate::OneMHz,
-                                          InternalPulserRate::Off};
+        InternalPulserRate rateList[5] = {InternalPulserRate::Off, InternalPulserRate::OneMHz, 
+                                          InternalPulserRate::HundKHz, InternalPulserRate::TenKHz,
+                                          InternalPulserRate::OneKHz};
         unsigned counts[5];
-        counts[0] = oneKHzCt;
-        counts[1] = tenKHzCt;
+        counts[4] = oneKHzCt;
+        counts[3] = tenKHzCt;
         counts[2] = hundKHzCt;
-        counts[3] = oneMHzCt;
-        counts[4] = (16 - (oneKHzCt + tenKHzCt + hundKHzCt + oneMHzCt));
+        counts[1] = oneMHzCt;
+        counts[0] = (16 - (oneKHzCt + tenKHzCt + hundKHzCt + oneMHzCt));
         
         unsigned baseIndex = 0;
         for(int i=0; i<5; ++i)
