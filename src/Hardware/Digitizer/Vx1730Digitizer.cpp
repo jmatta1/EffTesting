@@ -314,6 +314,8 @@ void Vx1730Digitizer::startAcquisition()
 {
     usWaitingForInterrupt=0;
     usReadingData=0;
+    interuptWaitAttempts = 0;
+    interuptTimeouts = 0;
     using LowLvl::Vx1730WriteRegisters;
     using LowLvl::Vx1730CommonWriteRegistersAddr;
     BOOST_LOG_SEV(lg, Information) << "ACQ Thread: Starting/Arming Acqusition On Digitizer #" << moduleNumber ;
@@ -341,8 +343,6 @@ void Vx1730Digitizer::startAcquisition()
         this->writeErrorAndThrow(errVal);
     }
     BOOST_LOG_SEV(lg, Information) << "ACQ Thread: Digitizer #" << moduleNumber << " Acquisition Started/Armed";
-    interuptWaitAttempts = 0;
-    interuptTimeouts = 0;
     acqRunning = true;
 }
 
@@ -359,6 +359,7 @@ void Vx1730Digitizer::stopAcquisition()
                                        << interuptWaitAttempts << " Timeouts: " << interuptTimeouts;
     BOOST_LOG_SEV(lg, Information) << "ACQ Thread: Digitizer #" << moduleNumber << " Microseconds Waiting: " << usWaitingForInterrupt;
     BOOST_LOG_SEV(lg, Information) << "ACQ Thread: Digitizer #" << moduleNumber << " Microseconds Reading: " << usReadingData;
+    BOOST_LOG_SEV(lg, Information) << "ACQ Thread: Digitizer #" << moduleNumber << " Interrupt Waits: " << interuptWaitAttempts;
     interuptWaitAttempts = 0;
     interuptTimeouts = 0;
     acqRunning = false;
@@ -401,7 +402,9 @@ unsigned int Vx1730Digitizer::waitForInterruptToReadData(unsigned int* buffer)
     ++interuptWaitAttempts;
     this->timeStart = boost::posix_time::microsec_clock::universal_time();
     readError = CAENComm_IRQWait(digitizerHandle, IrqTimeoutMs);
-    usWaitingForInterrupt += (boost::posix_time::microsec_clock::universal_time()-timeStart).total_microseconds();
+    unsigned long long waitTime = (boost::posix_time::microsec_clock::universal_time()-timeStart).total_microseconds();
+    usWaitingForInterrupt += waitTime;
+    BOOST_LOG_SEV(lg, Information) << "ACQ Thread: Digitizer #" << moduleNumber << "MicroSeconds Waited: " << waitTime;
     if(readError == CAENComm_CommTimeout)
     {//timing out is not an error
         ++interuptTimeouts;
@@ -488,7 +491,9 @@ unsigned int Vx1730Digitizer::performFinalReadout(unsigned int* buffer)
         }
         eventReady = (readValue & 0x00000001);
     }
-    usReadingData += (boost::posix_time::microsec_clock::universal_time()-timeStart).total_microseconds();
+    unsigned long long readTime = (boost::posix_time::microsec_clock::universal_time()-timeStart).total_microseconds();
+    usReadingData += readTime;
+    BOOST_LOG_SEV(lg, Information) << "ACQ Thread: Digitizer #" << moduleNumber << "MicroSeconds Reading: " << readTime;
     return dataRead;
 }
 
@@ -553,7 +558,9 @@ unsigned int Vx1730Digitizer::readImpromptuDataAvailable(unsigned int* buffer)
         }
         eventReady = (readValue & 0x00000001);
     }
-    usReadingData += (boost::posix_time::microsec_clock::universal_time()-timeStart).total_microseconds();
+    unsigned long long readTime = (boost::posix_time::microsec_clock::universal_time()-timeStart).total_microseconds();
+    usReadingData += readTime;
+    BOOST_LOG_SEV(lg, Information) << "ACQ Thread: Digitizer #" << moduleNumber << "MicroSeconds Reading: " << readTime;
     return dataRead;
 }
 
@@ -610,7 +617,9 @@ unsigned int Vx1730Digitizer::readInterruptDataAvailable(unsigned int* buffer)
         }
         ++readCount;
     }
-    usReadingData += (boost::posix_time::microsec_clock::universal_time()-timeStart).total_microseconds();
+    unsigned long long readTime = (boost::posix_time::microsec_clock::universal_time()-timeStart).total_microseconds();
+    usReadingData += readTime;
+    BOOST_LOG_SEV(lg, Information) << "ACQ Thread: Digitizer #" << moduleNumber << "MicroSeconds Reading: " << readTime;
     return dataRead;
 }
 
